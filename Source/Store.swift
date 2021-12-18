@@ -1,5 +1,7 @@
+import Combine
+import CombineExt
+import CombineSchedulers
 import Foundation
-import ReactiveSwift
 import Schemata
 
 /// An error that occurred while opening an on-disk `Store`.
@@ -35,9 +37,11 @@ public enum ReadWrite {}
 /// A store of model objects, either in memory or on disk, that can be modified, queried, and
 /// observed.
 public final class Store<Mode> {
+	fileprivate typealias QueueScheduler = AnyScheduler<DispatchQueue.SchedulerTimeType, DispatchQueue.SchedulerOptions>
+
     /// Create a new scheduler to use for database access.
-    fileprivate static func makeScheduler() -> QueueScheduler {
-        return QueueScheduler(qos: .userInitiated, name: "org.persistx.PersistDB")
+	fileprivate static func makeScheduler() -> QueueScheduler {
+		return DispatchQueue(label: "org.persistx.PersistDB", qos: .userInitiated).eraseToAnyScheduler()
     }
 
     /// The underlying SQL database.
@@ -49,8 +53,8 @@ public final class Store<Mode> {
     /// A pipe of the actions and effects that are mutating the store.
     ///
     /// Used to determine when observed queries must be refetched.
-    private let actions: Signal<Tagged<SQL.Action>?, Never>.Observer
-    private let effects: Signal<Tagged<SQL.Effect>?, Never>
+    private let actions: PassthroughSubject<Tagged<SQL.Action>?, Never>
+    private let effects: AnyPublisher<Tagged<SQL.Effect>?, Never>
 
     /// The designated initializer.
     ///
@@ -89,43 +93,40 @@ public final class Store<Mode> {
             }
         }
 
-        let pipe = Signal<Tagged<SQL.Action>?, Never>.pipe()
-        actions = pipe.input
-        effects = pipe.output
-            .observe(on: scheduler)
+        actions = PassthroughSubject<Tagged<SQL.Action>?, Never>()
+		effects = actions
+			.subscribe(on: scheduler)
             .map { action in
                 return action?.map(db.perform)
             }
-            .observe(on: UIScheduler())
+            .receive(on: RunLoop.main)
+			.eraseToAnyPublisher()
     }
 
     fileprivate static func _open(
         at url: URL,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         let scheduler = Store.makeScheduler()
-        return SignalProducer(value: url)
-            .observe(on: scheduler)
-            .attemptMap { url in
-                do {
-                    let db = try SQL.Database(at: url)
-                    let store = try Store(db, for: schemas, scheduler: scheduler)
-                    return .success(store)
-                } catch let error as OpenError {
-                    return .failure(error)
-                } catch {
-                    return .failure(.unknown(error))
-                }
+        return Just(url)
+            .subscribe(on: scheduler)
+            .tryMap { url in
+				let db = try SQL.Database(at: url)
+				return try Store(db, for: schemas, scheduler: scheduler)
+			}
+			.mapError {
+				$0 as? OpenError ?? .unknown($0)
             }
-            .observe(on: UIScheduler())
+            .receive(on: DispatchQueue.main)
+			.eraseToAnyPublisher()
     }
 
     fileprivate static func _open(
         libraryNamed fileName: String,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
-        return SignalProducer(value: fileName)
-            .attemptMap { fileName in
+    ) -> AnyPublisher<Store, OpenError> {
+        return Just(fileName)
+            .tryMap { fileName in
                 try FileManager
                     .default
                     .url(
@@ -137,30 +138,31 @@ public final class Store<Mode> {
                     .appendingPathComponent(fileName)
             }
             .mapError(OpenError.unknown)
-            .flatMap(.latest) { url in
+            .flatMapLatest { url in
                 self._open(at: url, for: schemas)
-            }
+			}
+			.eraseToAnyPublisher()
     }
 
     fileprivate static func _open(
         libraryNamed fileName: String,
         inApplicationGroup applicationGroup: String,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         let url = FileManager
             .default
             .containerURL(forSecurityApplicationGroupIdentifier: applicationGroup)!
             .appendingPathComponent(fileName)
         return _open(at: url, for: schemas)
-            .on(value: { store in
+            .handleEvents(receiveOutput: { store in
                 let nc = CFNotificationCenterGetDarwinNotifyCenter()
                 let name = CFNotificationName("\(applicationGroup)-\(fileName)" as CFString)
-                store
+                _ = store
                     .effects
                     .filter { $0 != nil }
-                    .observe { _ in
+					.handleEvents(receiveOutput: { _ in
                         CFNotificationCenterPostNotification(nc, name, nil, nil, true)
-                    }
+                    })
 
                 let observer = UnsafeRawPointer(Unmanaged.passUnretained(store.actions).toOpaque())
                 CFNotificationCenterAddObserver(
@@ -168,10 +170,10 @@ public final class Store<Mode> {
                     observer,
                     { _, observer, _, _, _ in // swiftlint:disable:this opening_brace
                         if let observer = observer {
-                            let actions = Unmanaged<Signal<Tagged<SQL.Action>?, Never>.Observer>
+                            let actions = Unmanaged<PassthroughSubject<Tagged<SQL.Action>?, Never>>
                                 .fromOpaque(observer)
                                 .takeUnretainedValue()
-                            actions.send(value: nil)
+                            actions.send(nil)
                         }
                     },
                     name.rawValue,
@@ -179,6 +181,7 @@ public final class Store<Mode> {
                     .deliverImmediately
                 )
             })
+			.eraseToAnyPublisher()
     }
 }
 
@@ -189,14 +192,14 @@ extension Store where Mode == ReadOnly {
     ///   - url: The file URL of the store to open.
     ///   - schemas: The schemas for the models in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public static func open(
         at url: URL,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(at: url, for: schemas)
     }
 
@@ -206,14 +209,14 @@ extension Store where Mode == ReadOnly {
     ///   - url: The file URL of the store to open.
     ///   - types: The model types in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public static func open(
         at url: URL,
         for types: [Schemata.AnyModel.Type]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(at: url, for: types.map { $0.anySchema })
     }
 
@@ -224,14 +227,14 @@ extension Store where Mode == ReadOnly {
     ///               store.
     ///   - schemas: The schemas for the models in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public static func open(
         libraryNamed fileName: String,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(libraryNamed: fileName, for: schemas)
     }
 
@@ -242,14 +245,14 @@ extension Store where Mode == ReadOnly {
     ///               store.
     ///   - types: The model types in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public static func open(
         libraryNamed fileName: String,
         for types: [Schemata.AnyModel.Type]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(libraryNamed: fileName, for: types.map { $0.anySchema })
     }
 
@@ -261,7 +264,7 @@ extension Store where Mode == ReadOnly {
     ///   - applicationGroup: The identifier for the shared application group.
     ///   - schemas: The schemas for the models in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -269,7 +272,7 @@ extension Store where Mode == ReadOnly {
         libraryNamed fileName: String,
         inApplicationGroup applicationGroup: String,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(
             libraryNamed: fileName,
             inApplicationGroup: applicationGroup,
@@ -285,7 +288,7 @@ extension Store where Mode == ReadOnly {
     ///   - applicationGroup: The identifier for the shared application group.
     ///   - types: The model types in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -293,7 +296,7 @@ extension Store where Mode == ReadOnly {
         libraryNamed fileName: String,
         inApplicationGroup applicationGroup: String,
         for types: [Schemata.AnyModel.Type]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(
             libraryNamed: fileName,
             inApplicationGroup: applicationGroup,
@@ -319,7 +322,7 @@ extension Store where Mode == ReadWrite {
     ///   - url: The file URL of the store to open.
     ///   - schemas: The schemas for the models in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -328,7 +331,7 @@ extension Store where Mode == ReadWrite {
     public static func open(
         at url: URL,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(at: url, for: schemas)
     }
 
@@ -338,7 +341,7 @@ extension Store where Mode == ReadWrite {
     ///   - url: The file URL of the store to open.
     ///   - types: The model types in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -347,7 +350,7 @@ extension Store where Mode == ReadWrite {
     public static func open(
         at url: URL,
         for types: [Schemata.AnyModel.Type]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(at: url, for: types.map { $0.anySchema })
     }
 
@@ -358,7 +361,7 @@ extension Store where Mode == ReadWrite {
     ///               store.
     ///   - schemas: The schemas for the models in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -367,7 +370,7 @@ extension Store where Mode == ReadWrite {
     public static func open(
         libraryNamed fileName: String,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(libraryNamed: fileName, for: schemas)
     }
 
@@ -378,7 +381,7 @@ extension Store where Mode == ReadWrite {
     ///               store.
     ///   - types: The model types in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -387,7 +390,7 @@ extension Store where Mode == ReadWrite {
     public static func open(
         libraryNamed fileName: String,
         for types: [Schemata.AnyModel.Type]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(libraryNamed: fileName, for: types.map { $0.anySchema })
     }
 
@@ -399,7 +402,7 @@ extension Store where Mode == ReadWrite {
     ///   - applicationGroup: The identifier for the shared application group.
     ///   - schemas: The schemas for the models in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -409,7 +412,7 @@ extension Store where Mode == ReadWrite {
         libraryNamed fileName: String,
         inApplicationGroup applicationGroup: String,
         for schemas: [AnySchema]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(
             libraryNamed: fileName,
             inApplicationGroup: applicationGroup,
@@ -425,7 +428,7 @@ extension Store where Mode == ReadWrite {
     ///   - applicationGroup: The identifier for the shared application group.
     ///   - types: The model types in the store.
     ///
-    /// - returns: A `SignalProducer` that will create and send a `Store` or send an `OpenError` if
+    /// - returns: A `Publisher` that will create and send a `Store` or send an `OpenError` if
     ///            one couldn't be opened.
     ///
     /// - important: Nothing will be done until the returned producer is started.
@@ -435,7 +438,7 @@ extension Store where Mode == ReadWrite {
         libraryNamed fileName: String,
         inApplicationGroup applicationGroup: String,
         for types: [Schemata.AnyModel.Type]
-    ) -> SignalProducer<Store, OpenError> {
+    ) -> AnyPublisher<Store, OpenError> {
         return _open(
             libraryNamed: fileName,
             inApplicationGroup: applicationGroup,
@@ -449,27 +452,30 @@ extension Store where Mode == ReadWrite {
     ///
     /// - parameter:
     ///   - action: The SQL action to perform.
-    /// - returns: A signal producer that sends the effect of the action and then completes.
-    private func perform(_ action: SQL.Action) -> SignalProducer<SQL.Effect, Never> {
+    /// - returns: A publisher that sends the effect of the action and then completes.
+    private func perform(_ action: SQL.Action) -> AnyPublisher<SQL.Effect, Never> {
         let tagged = Tagged(action)
-        defer { actions.send(value: tagged) }
+        defer { actions.send(tagged) }
 
-        let effect = SignalProducer<Tagged<SQL.Effect>?, Never>(effects)
+        return effects
             .compactMap { $0 }
             .filter { $0.uuid == tagged.uuid }
             .map { $0.value }
-            .take(first: 1)
-            .replayLazily(upTo: 1)
-        effect.start()
-        return effect
+            .prefix(1)
+            .share(replay: 1)
+			.eraseToAnyPublisher()
     }
 
     /// Perform an action in the store.
     ///
     /// - important: This is done asynchronously.
     @discardableResult
-    public func perform(_ action: Action) -> SignalProducer<Never, Never> {
-        return perform(action.makeSQL()).then(.empty)
+    public func perform(_ action: Action) -> AnyPublisher<Never, Never> {
+		let empty = Empty<SQL.Effect, Never>()
+		return perform(action.makeSQL())
+			.append(empty)
+			.ignoreOutput()
+			.eraseToAnyPublisher()
     }
 
     /// Insert a model entity into the store.
@@ -478,9 +484,9 @@ extension Store where Mode == ReadWrite {
     ///
     /// - parameters:
     ///   - insert: The entity to insert
-    /// - returns: A signal producer that sends the ID after the model has been inserted.
+    /// - returns: A publisher that sends the ID after the model has been inserted.
     @discardableResult
-    public func insert<Model>(_ insert: Insert<Model>) -> SignalProducer<Model.ID, Never> {
+    public func insert<Model>(_ insert: Insert<Model>) -> AnyPublisher<Model.ID, Never> {
         return perform(.insert(insert.makeSQL()))
             .map { effect -> Model.ID in
                 guard case let .inserted(_, id) = effect else { fatalError("Mistaken effect") }
@@ -493,22 +499,31 @@ extension Store where Mode == ReadWrite {
                     fatalError("Decoding ID should never fail")
                 }
             }
+			.eraseToAnyPublisher()
     }
 
     /// Delete a model entity from the store.
     ///
     /// - important: This is done asynchronously.
     @discardableResult
-    public func delete<Model>(_ delete: Delete<Model>) -> SignalProducer<Never, Never> {
-        return perform(.delete(delete.makeSQL())).then(.empty)
+    public func delete<Model>(_ delete: Delete<Model>) -> AnyPublisher<Never, Never> {
+		let empty = Empty<SQL.Effect, Never>()
+        return perform(.delete(delete.makeSQL()))
+			.append(empty)
+			.ignoreOutput()
+			.eraseToAnyPublisher()
     }
 
     /// Update properties for a model entity in the store.
     ///
     /// - important: This is done asynchronously.
     @discardableResult
-    public func update<Model>(_ update: Update<Model>) -> SignalProducer<Never, Never> {
-        return perform(.update(update.makeSQL())).then(.empty)
+    public func update<Model>(_ update: Update<Model>) -> AnyPublisher<Never, Never> {
+		let empty = Empty<SQL.Effect, Never>()
+        return perform(.update(update.makeSQL()))
+			.append(empty)
+			.ignoreOutput()
+			.eraseToAnyPublisher()
     }
 }
 
@@ -521,18 +536,19 @@ extension Store {
     ///   - query: The SQL query to be fetched from the store.
     ///   - transform: A black to transform the SQL rows into a value.
     ///
-    /// - returns: A `SignalProducer` that will fetch values for entities that match the query.
+    /// - returns: A `Publisher` that will fetch values for entities that match the query.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     private func fetch<Value>(
         _ query: SQL.Query,
         _ transform: @escaping ([SQL.Row]) -> Value
-    ) -> SignalProducer<Value, Never> {
-        return SignalProducer(value: query)
-            .observe(on: scheduler)
+    ) -> AnyPublisher<Value, Never> {
+        return Just(query)
+            .subscribe(on: scheduler)
             .map(db.query)
             .map(transform)
-            .observe(on: UIScheduler())
+            .receive(on: RunLoop.main)
+			.eraseToAnyPublisher()
     }
 
     /// Observe a SQL query from the store.
@@ -543,22 +559,24 @@ extension Store {
     /// - parameters:
     ///   - query: The SQL query to be observed.
     ///   - transform: A black to transform the SQL rows into a value.
-    /// - returns: A `SignalProducer` that will send values for entities that match the
+    /// - returns: A `Publisher` that will send values for entities that match the
     ////           query, sending a new value whenever it's changed.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     private func observe<Value>(
         _ query: SQL.Query,
         _ transform: @escaping ([SQL.Row]) -> Value
-    ) -> SignalProducer<Value, Never> {
+    ) -> AnyPublisher<Value, Never> {
+		let never = Empty<Value, Never>()
         return fetch(query, transform)
-            .concat(.never)
-            .take(
-                until: effects
-                    .filter { $0?.map(query.invalidated(by:)).value ?? true }
-                    .map { _ in () }
-            )
-            .repeat(.max)
+            .append(never)
+//			.prefix(
+//				untilOutputFrom: effects
+//					.filter { $0?.map(query.invalidated(by:)).value ?? true }
+//					.map { _ in () }
+//			)
+//			.retry(.max)
+			.eraseToAnyPublisher()
     }
 
     /// Fetch a projected query from the store.
@@ -568,12 +586,12 @@ extension Store {
     /// - parameters:
     ///   - projected: The projected query to be fetched from the store.
     ///
-    /// - returns: A `SignalProducer` that will fetch projections for entities that match the query.
+    /// - returns: A `Publisher` that will fetch projections for entities that match the query.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     private func fetch<Group, Projection>(
         _ projected: ProjectedQuery<Group, Projection>
-    ) -> SignalProducer<ResultSet<Group, Projection>, Never> {
+    ) -> AnyPublisher<ResultSet<Group, Projection>, Never> {
         return fetch(projected.sql, projected.resultSet(for:))
     }
 
@@ -585,13 +603,13 @@ extension Store {
     /// - parameters:
     ///   - query: The projected query to be observed.
     ///
-    /// - returns: A `SignalProducer` that will send sets of projections for entities that match the
+    /// - returns: A `Publisher` that will send sets of projections for entities that match the
     ////           query, sending a new set whenever it's changed.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     private func observe<Group, Projection>(
         _ projected: ProjectedQuery<Group, Projection>
-    ) -> SignalProducer<ResultSet<Group, Projection>, Never> {
+    ) -> AnyPublisher<ResultSet<Group, Projection>, Never> {
         return observe(projected.sql, projected.resultSet(for:))
     }
 
@@ -600,17 +618,18 @@ extension Store {
     /// - parameters:
     ///   - id: The ID of the entity to be projected.
     ///
-    /// - returns: A `SignalProducer` that will fetch the projection for the entity that matches the
+    /// - returns: A `Publisher` that will fetch the projection for the entity that matches the
     ///            query or send `nil` if no entity exists with that ID.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public func fetch<Projection: ModelProjection>(
         _ id: Projection.Model.ID
-    ) -> SignalProducer<Projection?, Never> {
+    ) -> AnyPublisher<Projection?, Never> {
         let query = Projection.Model.all
             .filter(Projection.Model.idKeyPath == id)
         return fetch(query)
             .map { resultSet in resultSet.values.first }
+			.eraseToAnyPublisher()
     }
 
     /// Observe a projection from the store by the model entity's id.
@@ -621,17 +640,18 @@ extension Store {
     /// - parameters:
     ///   - query: A query matching the model entities to be projected.
     ///
-    /// - returns: A `SignalProducer` that will send sets of projections for entities that match the
+    /// - returns: A `Publisher` that will send sets of projections for entities that match the
     ////           query, sending a new set whenever it's changed.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public func observe<Projection: ModelProjection>(
         _ id: Projection.Model.ID
-    ) -> SignalProducer<Projection?, Never> {
+    ) -> AnyPublisher<Projection?, Never> {
         let query = Projection.Model.all
             .filter(Projection.Model.idKeyPath == id)
         return observe(query)
             .map { resultSet in resultSet.first }
+			.eraseToAnyPublisher()
     }
 
     /// Fetch projections from the store with a query.
@@ -639,12 +659,12 @@ extension Store {
     /// - parameters:
     ///   - query: A query matching the model entities to be projected.
     ///
-    /// - returns: A `SignalProducer` that will fetch projections for entities that match the query.
+    /// - returns: A `Publisher` that will fetch projections for entities that match the query.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public func fetch<Key, Projection: ModelProjection>(
         _ query: Query<Key, Projection.Model>
-    ) -> SignalProducer<ResultSet<Key, Projection>, Never> {
+    ) -> AnyPublisher<ResultSet<Key, Projection>, Never> {
         let projected = ProjectedQuery<Key, Projection>(query)
         return fetch(projected)
     }
@@ -657,13 +677,13 @@ extension Store {
     /// - parameters:
     ///   - query: A query matching the model entities to be projected.
     ///
-    /// - returns: A `SignalProducer` that will send sets of projections for entities that match the
+    /// - returns: A `Publisher` that will send sets of projections for entities that match the
     ////           query, sending a new set whenever it's changed.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public func observe<Key, Projection: ModelProjection>(
         _ query: Query<Key, Projection.Model>
-    ) -> SignalProducer<ResultSet<Key, Projection>, Never> {
+    ) -> AnyPublisher<ResultSet<Key, Projection>, Never> {
         let projected = ProjectedQuery<Key, Projection>(query)
         return observe(projected)
     }
@@ -673,12 +693,12 @@ extension Store {
     /// - parameters:
     ///   - aggregate: The aggregate value to fetch.
     ///
-    /// - returns: A `SignalProducer` that will fetch the aggregate.
+    /// - returns: A `Publisher` that will fetch the aggregate.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public func fetch<Model, Value>(
         _ aggregate: Aggregate<Model, Value>
-    ) -> SignalProducer<Value, Never> {
+    ) -> AnyPublisher<Value, Never> {
         return fetch(aggregate.sql, aggregate.result(for:))
     }
 
@@ -690,13 +710,13 @@ extension Store {
     /// - parameters:
     ///   - aggregate: The aggregate value to fetch.
     ///
-    /// - returns: A `SignalProducer` that will send the aggregate value, sending a new value
+    /// - returns: A `Publisher` that will send the aggregate value, sending a new value
     ///            whenever it's changed.
     ///
     /// - important: Nothing will be done until the returned producer is started.
     public func observe<Model, Value>(
         _ aggregate: Aggregate<Model, Value>
-    ) -> SignalProducer<Value, Never> {
+    ) -> AnyPublisher<Value, Never> {
         return observe(aggregate.sql, aggregate.result(for:))
     }
 }

@@ -1,5 +1,4 @@
 import PersistDB
-import ReactiveSwift
 import Schemata
 import UIKit
 
@@ -43,9 +42,6 @@ final class TaskListViewController: UIViewController {
     let store: Store<ReadWrite>
 
     /// The currently viewed segment.
-    ///
-    /// `MutableProperty` comes from ReactiveSwift. It allows this property to be observed,
-    /// making updating the query and store observation easy.
     var segment = MutableProperty<Segment>(.all)
 
     /// The table model backing the table view.

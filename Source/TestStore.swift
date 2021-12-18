@@ -1,5 +1,5 @@
+import Combine
 import Foundation
-import ReactiveSwift
 import Schemata
 
 private struct ID<A: PersistDB.Model>: ModelProjection, Hashable {
@@ -76,10 +76,9 @@ public final class TestStore {
         _ a: [A.ID: ValueSet<A>]
     ) {
         self.init(for: [A.self])
-        _ = SignalProducer(a)
-            .map(Insert.init)
-            .flatMap(.merge, store.insert)
-            .await()
+		_ = Publishers.MergeMany(a.map(Insert.init).map(Just.init))
+			.flatMap(store.insert)
+			.eraseToAnyPublisher()
     }
 
     /// Synchronously fetch the results of the query.

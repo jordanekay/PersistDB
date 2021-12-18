@@ -1,4 +1,3 @@
-import ReactiveSwift
 import Schemata
 
 /// A value that can be used in an assigment in a value set.

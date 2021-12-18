@@ -1,5 +1,4 @@
 import Foundation
-import ReactiveSwift
 import Schemata
 
 /// A type-erased expression.
@@ -316,4 +315,16 @@ public func coalesce<Model: PersistDB.Model, Value>(
         .map(Model.anySchema.properties(for:))
         .map(AnyExpression.keyPath)
     return Expression(.function(.coalesce, args))
+}
+
+// MARK: - Protocols
+
+public protocol OptionalProtocol: ExpressibleByNilLiteral {
+	/// The type contained in the optional.
+	associatedtype Wrapped
+
+	init(reconstructing value: Wrapped?)
+
+	/// Extracts an optional from the receiver.
+	var optional: Wrapped? { get }
 }

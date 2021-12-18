@@ -1,26 +1,27 @@
+import Combine
 import Foundation
-import ReactiveSwift
 
-extension SignalProducer {
-    /// Await the termination of the signal producer.
+extension Publisher {
+    /// Await the termination of the publisher.
     ///
-    /// - returns: A `Bool` indicated whether the producer completed.
+    /// - returns: A `Bool` indicated whether the publisher completed.
     internal func await(timeout: TimeInterval = 0.1) -> Bool {
         var done = false
         var completed = false
 
         let started = Date()
-        start { event in
-            switch event {
-            case .value:
-                break
-            case .completed:
-                completed = true
-                done = true
-            case .interrupted, .failed:
-                done = true
-            }
-        }
+		_ = sink { completion in
+			switch completion {
+			case .finished:
+				completed = true
+				done = true
+			case .failure:
+				done = true
+			}
+			completed = true
+		} receiveValue: { _ in
+			return
+		}
 
         while !done, abs(started.timeIntervalSinceNow) < timeout {
             RunLoop.main.run(mode: RunLoop.Mode.default, before: Date(timeIntervalSinceNow: 0.01))
@@ -29,17 +30,17 @@ extension SignalProducer {
         return completed
     }
 
-    /// Await the first value from the signal producer.
-    internal func awaitFirst() -> Result<Value, Error>? {
-        var result: Result<Value, Error>?
+    /// Await the first value from the publisher.
+    internal func awaitFirst() -> Result<Output, Error>? {
+        var result: Result<Output, Error>?
 
-        _ = take(first: 1)
-            .map(Result.success)
-            .flatMapError { error -> SignalProducer<Result<Value, Error>, Never> in
-                let result = Result<Value, Error>.failure(error)
-                return SignalProducer<Result<Value, Error>, Never>(value: result)
+        _ = prefix(1)
+			.map(Result<Output, Error>.success)
+            .catch { error -> AnyPublisher<Result<Output, Error>, Never> in
+                let result = Result<Output, Error>.failure(error)
+				return Just<Result<Output, Error>>(result).eraseToAnyPublisher()
             }
-            .on(value: { result = $0 })
+			.handleEvents(receiveOutput: { result = $0} )
             .await()
 
         return result

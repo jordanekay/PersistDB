@@ -141,7 +141,7 @@ Actual fetches are done with a [`Projection`](#define-a-projection).
 
 ```swift
 store
-    // A `ReactiveSwift.SignalProducer` that fetches the data
+    // A Combine Publisher that fetches the data
     .fetch(harryPotter)
     // Do something the the array or error
     .startWithResult { result in
