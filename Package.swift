@@ -11,7 +11,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/PersistX/Schemata.git", from: "0.3.3"),
+		.package(url: "https://github.com/Fleuronic/Schemata.git", .branch("master")),
         .package(url: "https://github.com/ReactiveCocoa/ReactiveSwift.git", from: "6.1.0"),
         .package(url: "https://github.com/tonyarnold/Differ.git", from: "1.4.3"),
     ],
