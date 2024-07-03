@@ -146,20 +146,32 @@ extension SQL {
 
 private func makeSQL(for properties: [AnyProperty]) -> SQL.Expression {
     func column(for property: AnyProperty) -> SQL.Column {
-        return SQL.Table(String(describing: property.model))[property.path]
+		let anyModel = property.model as! (any AnyModel.Type)
+		return SQL.Table(anyModel.anySchema.name)[property.path]
     }
 
     var value: SQL.Expression = .column(column(for: properties.last!))
+
     for property in properties.reversed().dropFirst() {
+		let anyModel = property.model as! (any AnyModel.Type)
         switch property.type {
-        case .toMany:
-            fatalError("Can't traverse to-many properties")
-        case let .toOne(model, _):
+        case let .toMany(model):
+			let lhs = SQL.Column(
+				table: SQL.Table(anyModel.anySchema.name),
+				name: "id"
+			)
+			let rhs = SQL.Column(
+				table: SQL.Table(model.anySchema.name),
+				name: property.path
+			)
+			value = .join(lhs, rhs, value)
+		case let .toOne(model, _):
+			let lhs = SQL.Table(anyModel.anySchema.name)[property.path]
             let rhs = SQL.Column(
-                table: SQL.Table(String(describing: model)),
+				table: SQL.Table(model.anySchema.name),
                 name: "id"
             )
-            value = .join(column(for: property), rhs, value)
+            value = .join(lhs, rhs, value)
         case .value:
             fatalError("Invalid scalar property in the middle of a KeyPath")
         }

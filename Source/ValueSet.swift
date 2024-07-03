@@ -103,6 +103,20 @@ public func == <Model, Value>(
     return Assignment<Model>(keyPath: lhs, value: .generator(rhs.generator))
 }
 
+public func == <ModelA, ModelB: Model>(
+	lhs: KeyPath<ModelA, ModelB>,
+	rhs: ModelB.ID
+) -> Assignment<ModelA> {
+	return Assignment<ModelA>(keyPath: lhs, value: .expression(AnyExpression(rhs)))
+}
+
+public func == <ModelA, ModelB: Model>(
+	lhs: KeyPath<ModelA, ModelB>,
+	rhs: ModelB.ID?
+) -> Assignment<ModelA> {
+	return Assignment<ModelA>(keyPath: lhs, value: .expression(AnyExpression(rhs)))
+}
+
 /// A type-erased `ValueSet`.
 internal struct AnyValueSet: Hashable {
     fileprivate var model: AnySchema

@@ -17,7 +17,7 @@ extension Model {
 }
 
 extension Model {
-    internal static var idKeyPath: KeyPath<Self, ID> {
+    public static var idKeyPath: KeyPath<Self, ID> {
         return schema
             .properties
             .values

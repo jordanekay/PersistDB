@@ -84,13 +84,19 @@ extension Projection {
     internal func makeValue(_ values: [PartialKeyPath<Model>: SQL.Value]) -> Value? {
         let schema = Model.schema
         var result: [PartialKeyPath<Model>: Any] = [:]
-        for (keyPath, value) in values {
-            let property = schema.properties(for: keyPath).last!
-            guard case let .value(type, isOptional) = property.type else {
-                fatalError("keypath should end with a scalar value")
-            }
-            let decoded = type.decode(value)
-            result[keyPath] = isOptional ? .some(decoded as Any) : decoded!
+		for (keyPath, value) in values {
+			let property = schema.properties(for: keyPath).last!
+			guard case let .value(type, isOptional) = property.type else {
+				fatalError("keypath should end with a scalar value")
+			}
+			let decoded = type.decode(value)
+			if isOptional {
+				result[keyPath] = .some(decoded as Any)
+			} else if "\(Swift.type(of: property.model))".contains("Array") {
+				result[keyPath] = [decoded!]
+			} else {
+				result[keyPath] = decoded!
+			}
         }
         return makeValue(result)
     }
