@@ -299,7 +299,7 @@ class StoreInsertTests: StoreTests {
     func testDateNow() {
         let insert: Insert<Widget> = [
             \Widget.id == 1,
-            \Widget.date == .now,
+            \Widget.date == Date.now,
             \Widget.double == 3.2,
             \Widget.uuid == .uuid(),
         ]
@@ -316,13 +316,13 @@ class StoreInsertTests: StoreTests {
     func testUUID() {
         let insert1: Insert<Widget> = [
             \Widget.id == 1,
-            \Widget.date == .now,
+            \Widget.date == Date.now,
             \Widget.double == 3.2,
             \Widget.uuid == .uuid(),
         ]
         let insert2: Insert<Widget> = [
             \Widget.id == 2,
-            \Widget.date == .now,
+            \Widget.date == Date.now,
             \Widget.double == 3.3,
             \Widget.uuid == .uuid(),
         ]
@@ -336,7 +336,7 @@ class StoreInsertTests: StoreTests {
     func testSendsID() {
         let widget: Insert<Widget> = [
             \Widget.id == 2,
-            \Widget.date == .now,
+            \Widget.date == Date.now,
             \Widget.double == 3.3,
             \Widget.uuid == .uuid(),
         ]

@@ -9,19 +9,19 @@ class PredicateSQLTests: XCTestCase {
     // MARK: - sql
 
     func testEqualDate() {
-        let predicate: Predicate = \Widget.date == Date(timeIntervalSinceReferenceDate: 100_000)
+        let predicate: PersistDB.Predicate = \Widget.date == Date(timeIntervalSinceReferenceDate: 100_000)
         let expression: AnyExpression = AnyExpression(\Widget.date) == .value(.real(100_000))
         XCTAssertEqual(predicate.expression, expression)
     }
 
     func testEqualToOneOptionalInt() {
-        let predicate: Predicate = \Book.author.died == nil
+        let predicate: PersistDB.Predicate = \Book.author.died == nil
         let expression: AnyExpression = AnyExpression(\Book.author.died) == .value(.null)
         XCTAssertEqual(predicate.expression, expression)
     }
 
     func testEqualString() {
-        let predicate: Predicate = \Author.name == "J.K. Rowling"
+        let predicate: PersistDB.Predicate = \Author.name == "J.K. Rowling"
         let expression: AnyExpression = AnyExpression(\Author.name) == .value(.text("J.K. Rowling"))
         XCTAssertEqual(predicate.expression, expression)
     }

@@ -70,7 +70,7 @@ class TableSelectedTests: XCTestCase {
 
     func testNonEmpty() {
         let table = Table(grouped.resultSet, selectedIDs: [.jrrTolkien, .rayBradbury])
-        let expected: Predicate<Author> = [
+        let expected: PersistDB.Predicate<Author> = [
             Author.ID.jrrTolkien,
             Author.ID.rayBradbury,
         ].contains(\.id)

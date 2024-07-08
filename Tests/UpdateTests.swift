@@ -3,11 +3,11 @@ import XCTest
 
 class UpdateSQLTests: XCTestCase {
     func testSQLWithPredicate() {
-        let predicate: Predicate = \Widget.id == 1
+        let predicate: PersistDB.Predicate = \Widget.id == 1
         let update = Update(
             predicate: predicate,
             valueSet: [
-                \.date == .now,
+                \.date == Date.now,
                 \.double == 4.7,
             ]
         )
@@ -27,7 +27,7 @@ class UpdateSQLTests: XCTestCase {
         let update = Update(
             predicate: nil,
             valueSet: [
-                \Widget.date == .now,
+                \Widget.date == Date.now,
                 \Widget.double == 4.7,
             ]
         )
