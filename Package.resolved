@@ -1,61 +1,24 @@
 {
-  "object": {
-    "pins": [
-      {
-        "package": "Differ",
-        "repositoryURL": "https://github.com/tonyarnold/Differ.git",
-        "state": {
-          "branch": null,
-          "revision": "bc40b8ea4ec483bb77f4084438068677657d90bf",
-          "version": "1.4.0"
-        }
-      },
-      {
-        "package": "Nimble",
-        "repositoryURL": "https://github.com/Quick/Nimble.git",
-        "state": {
-          "branch": null,
-          "revision": "43304bf2b1579fd555f2fdd51742771c1e4f2b98",
-          "version": "8.0.1"
-        }
-      },
-      {
-        "package": "Quick",
-        "repositoryURL": "https://github.com/Quick/Quick.git",
-        "state": {
-          "branch": null,
-          "revision": "0b4ed6c706dd0cce923b5019a605a9bcc6b1b600",
-          "version": "2.0.0"
-        }
-      },
-      {
-        "package": "ReactiveSwift",
-        "repositoryURL": "https://github.com/ReactiveCocoa/ReactiveSwift.git",
-        "state": {
-          "branch": null,
-          "revision": "e285cea17cca8e23928d1e85a235638184e39ac9",
-          "version": "5.0.0"
-        }
-      },
-      {
-        "package": "Result",
-        "repositoryURL": "https://github.com/antitypical/Result.git",
-        "state": {
-          "branch": null,
-          "revision": "2ca499ba456795616fbc471561ff1d963e6ae160",
-          "version": "4.1.0"
-        }
-      },
-      {
-        "package": "Schemata",
-        "repositoryURL": "https://github.com/PersistX/Schemata.git",
-        "state": {
-          "branch": null,
-          "revision": "43066deb2c7ae2aad2240c42ce598988b90743b7",
-          "version": "0.3.0"
-        }
+  "originHash" : "47d14432802d30675feb038cf153b9915aa1d44d90dc7cd7f13f47f15b0e8c46",
+  "pins" : [
+    {
+      "identity" : "differ",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tonyarnold/Differ.git",
+      "state" : {
+        "revision" : "5520fda947f1f9777a806389c2ba587219bc0538",
+        "version" : "1.4.6"
       }
-    ]
-  },
-  "version": 1
+    },
+    {
+      "identity" : "reactiveswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ReactiveCocoa/ReactiveSwift.git",
+      "state" : {
+        "branch" : "swift-concurrency",
+        "revision" : "3d40187c982346352d0adbe6b38e0e3d53fddc95"
+      }
+    }
+  ],
+  "version" : 3
 }
