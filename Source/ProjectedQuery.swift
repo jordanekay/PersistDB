@@ -41,7 +41,7 @@ internal struct ProjectedQuery<Group: ModelValue, Projection: PersistDB.ModelPro
             sql = SQL.Query(
                 results: [groupBy] + results,
                 predicates: predicates,
-                order: [ query.groupedBy.sql ] + order
+                order: order
             )
         }
     }
