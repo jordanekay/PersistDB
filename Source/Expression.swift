@@ -227,7 +227,7 @@ extension Expression where Model: PersistDB.Model {
 extension Expression where Model == None, Value == Date {
     /// An expression that evaluates to the current datetime.
     public static var now: Expression {
-        return Expression(.now)
+        return Expression(AnyExpression.now)
     }
 }
 
