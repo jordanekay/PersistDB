@@ -55,7 +55,7 @@ class AnyExpressionSQLTests: XCTestCase {
 
     func testDateNow() {
         let before = Date()
-        let date = Date.from(.now)
+        let date = Date.from(AnyExpression.now)
         let after = Date()
 
         XCTAssertGreaterThan(date, before)
