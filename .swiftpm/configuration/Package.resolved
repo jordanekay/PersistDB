@@ -1,0 +1,33 @@
+{
+  "originHash" : "d471b16927ee99088121cf02caca532f519db51fb1fbdeacb825feadd950fdec",
+  "pins" : [
+    {
+      "identity" : "differ",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tonyarnold/Differ.git",
+      "state" : {
+        "revision" : "5520fda947f1f9777a806389c2ba587219bc0538",
+        "version" : "1.4.6"
+      }
+    },
+    {
+      "identity" : "reactiveswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ReactiveCocoa/ReactiveSwift.git",
+      "state" : {
+        "branch" : "swift-concurrency",
+        "revision" : "3d40187c982346352d0adbe6b38e0e3d53fddc95"
+      }
+    },
+    {
+      "identity" : "schemata",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Fleuronic/Schemata.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "9725a2a3779a3f4c2ea1dbf0ce40a0b71eeeb34b"
+      }
+    }
+  ],
+  "version" : 3
+}

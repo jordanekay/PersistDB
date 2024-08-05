@@ -3,7 +3,7 @@ import ReactiveSwift
 import Schemata
 
 /// A particular day (i.e. a `Date` without a time)
-public struct Day: Hashable {
+public struct Day: Hashable, Sendable {
     public let daysSinceReferenceDate: Int
 
     public init(daysSinceReferenceDate: Int) {
@@ -66,7 +66,7 @@ extension Day {
 
 extension Day: ModelValue {
     public static let value = Int.value.bimap(
-        decode: Day.init(daysSinceReferenceDate:),
+		decode: { Day(daysSinceReferenceDate: $0) },
         encode: { $0.daysSinceReferenceDate }
     )
 }

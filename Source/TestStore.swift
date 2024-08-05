@@ -2,13 +2,13 @@ import Foundation
 import ReactiveSwift
 import Schemata
 
-private struct ID<A: PersistDB.Model>: ModelProjection, Hashable {
+private struct ID<A: PersistDB.Model>: ModelProjection, Hashable, Sendable where A.ID: Sendable {
     typealias Model = A
 
     let id: Model.ID
 
     static var projection: Projection<Model, ID<Model>> {
-        return Projection<Model, ID<Model>>(ID.init, Model.idKeyPath)
+		return Projection<Model, ID<Model>>({ ID(id: $0) }, Model.idKeyPath)
     }
 }
 
