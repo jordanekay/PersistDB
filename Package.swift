@@ -11,9 +11,9 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/Fleuronic/Schemata.git", branch: "master"),
-        .package(url: "https://github.com/Fleuronic/ReactiveSwift.git", branch: "swift-concurrency"),
-        .package(url: "https://github.com/tonyarnold/Differ.git", from: "1.4.3"),
+        .package(url: "https://github.com/Fleuronic/Schemata", branch: "master"),
+        .package(url: "https://github.com/Fleuronic/ReactiveSwift", branch: "master"),
+        .package(url: "https://github.com/tonyarnold/Differ", from: "1.4.3"),
     ],
     targets: [
         .target(

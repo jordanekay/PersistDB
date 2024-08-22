@@ -1,5 +1,5 @@
 {
-  "originHash" : "d471b16927ee99088121cf02caca532f519db51fb1fbdeacb825feadd950fdec",
+  "originHash" : "0af61a4e1b5f235845a0aca2de868fb112e69ecee871f85e548aba0ee30482aa",
   "pins" : [
     {
       "identity" : "differ",
@@ -13,16 +13,16 @@
     {
       "identity" : "reactiveswift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ReactiveCocoa/ReactiveSwift.git",
+      "location" : "https://github.com/Fleuronic/ReactiveSwift",
       "state" : {
-        "branch" : "swift-concurrency",
-        "revision" : "3d40187c982346352d0adbe6b38e0e3d53fddc95"
+        "branch" : "master",
+        "revision" : "efb2f0a6f6c8739cce8fb14148a5bd3c83f2f91d"
       }
     },
     {
       "identity" : "schemata",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Fleuronic/Schemata.git",
+      "location" : "https://github.com/Fleuronic/Schemata",
       "state" : {
         "branch" : "master",
         "revision" : "9725a2a3779a3f4c2ea1dbf0ce40a0b71eeeb34b"
