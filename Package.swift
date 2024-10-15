@@ -12,7 +12,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/Fleuronic/Schemata", branch: "master"),
-        .package(url: "https://github.com/Fleuronic/ReactiveSwift", branch: "master"),
+        .package(url: "https://github.com/Fleuronic/ReactiveSwift", branch: "main"),
         .package(url: "https://github.com/tonyarnold/Differ", from: "1.4.3"),
     ],
     targets: [

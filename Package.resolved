@@ -1,5 +1,5 @@
 {
-  "originHash" : "0af61a4e1b5f235845a0aca2de868fb112e69ecee871f85e548aba0ee30482aa",
+  "originHash" : "c181c2ec173b87dc571d40cbacad1d2f8b300eca6f27940a7a75a6edb3488128",
   "pins" : [
     {
       "identity" : "differ",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Fleuronic/ReactiveSwift",
       "state" : {
-        "branch" : "master",
-        "revision" : "efb2f0a6f6c8739cce8fb14148a5bd3c83f2f91d"
+        "branch" : "main",
+        "revision" : "db54c7d9b7cf3ed89962eac4b28a4c05df855956"
       }
     },
     {
