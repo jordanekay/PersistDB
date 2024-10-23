@@ -26,10 +26,10 @@ extension Task: PersistDB.Model {
     // The strings will be the names of the columns in the database.
     static let schema = Schema(
         Task.init,
-        \.id ~ "id",
-        \.createdAt ~ "createdAt",
-        \.completedAt ~ "completedAt",
-        \.text ~ "text"
+        \.id * "id",
+        \.createdAt * "createdAt",
+        \.completedAt * "completedAt",
+        \.text * "text"
     )
 
     static let defaultOrder: [Ordering<Task>] = [
