@@ -24,12 +24,7 @@ let package = Package(
                 "Schemata",
             ],
             path: "Source"
-        ),
-        .testTarget(
-            name: "PersistDBTests",
-            dependencies: ["PersistDB"],
-            path: "Tests"
-        ),
+        )
     ],
     swiftLanguageVersions: [.v5]
 )
