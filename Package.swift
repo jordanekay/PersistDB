@@ -11,9 +11,9 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/Fleuronic/Schemata", branch: "master"),
-        .package(url: "https://github.com/Fleuronic/ReactiveSwift", branch: "main"),
-        .package(url: "https://github.com/tonyarnold/Differ", from: "1.4.3"),
+        .package(url: "https://github.com/jordanekay/Schemata", branch: "master"),
+        .package(url: "https://github.com/ReactiveCocoa/ReactiveSwift.git", from: "7.1.1"),
+        .package(url: "https://github.com/tonyarnold/Differ", from: "1.4.3")
     ],
     targets: [
         .target(
