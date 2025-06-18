@@ -217,6 +217,27 @@ public struct Expression<Model, Value>: Hashable {
     }
 }
 
+extension Expression {
+    public var dictionary: [String: Any] {
+        switch expression.sql {
+        case let .binary(`operator`, .column(column), .value(value)):
+            return dictionary(column: column, operator: `operator`, value: value)
+        case let .binary(`operator`, .join(outerColumn, _, .column(innerColumn)), .value(value)):
+            return [outerColumn.name: dictionary(column: innerColumn, operator: `operator`, value: value)]
+        default:
+            return [:]
+        }
+    }
+
+    private func dictionary(
+        column: SQL.Column,
+        operator: SQL.BinaryOperator,
+        value: SQL.Value
+    ) -> [String: Any] {
+        [column.name: [`operator`.rawValue: value.text ?? value.description]]
+    }
+}
+
 extension Expression where Model: PersistDB.Model {
     /// Create an expression from a keypath.
     public init(_ keyPath: KeyPath<Model, Value>) {
