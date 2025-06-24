@@ -219,11 +219,19 @@ public struct Expression<Model, Value>: Hashable {
 
 extension Expression {
     public var dictionary: [String: Any] {
-        switch expression.sql {
+        expression.sql.dictionary
+    }
+}
+
+extension SQL.Expression {
+    fileprivate var dictionary: [String: Any] {
+        switch self {
         case let .binary(`operator`, .column(column), .value(value)):
             return dictionary(column: column, operator: `operator`, value: value)
         case let .binary(`operator`, .join(outerColumn, _, .column(innerColumn)), .value(value)):
             return [outerColumn.name: dictionary(column: innerColumn, operator: `operator`, value: value)]
+        case let .binary(`operator`, lhs, rhs):
+            return [`operator`.rawValue: lhs.dictionary.merging(rhs.dictionary) { $1 }]
         default:
             return [:]
         }

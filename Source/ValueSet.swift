@@ -198,4 +198,23 @@ extension ValueSet {
         }
         return true
     }
+
+    public var dictionary: [String: Any] {
+        let pairs = values.compactMap { keyPath, value -> (String, Any)? in
+            let property = Model.schema.properties.first { $0.key == keyPath }!
+            let path: String? = switch property.value.type {
+            case .value: property.value.path
+            case .toOne: "\(property.value.path)_id"
+            default: nil
+            }
+
+            guard
+                let path,
+                case let .expression(expression) = value,
+                case let .value(value) = expression.sql else { return nil }
+            return (path, value.text ?? value.description)
+        }
+
+        return .init(uniqueKeysWithValues: pairs)
+    }
 }
