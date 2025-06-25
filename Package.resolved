@@ -12,16 +12,16 @@
     {
       "identity" : "reactiveswift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Fleuronic/ReactiveSwift",
+      "location" : "https://github.com/ReactiveCocoa/ReactiveSwift.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "db54c7d9b7cf3ed89962eac4b28a4c05df855956"
+        "revision" : "c5eecb5374ac342e22d46abd333e4c8c698c93cc",
+        "version" : "7.2.0"
       }
     },
     {
       "identity" : "schemata",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Fleuronic/Schemata",
+      "location" : "https://github.com/jordanekay/Schemata",
       "state" : {
         "branch" : "master",
         "revision" : "9725a2a3779a3f4c2ea1dbf0ce40a0b71eeeb34b"
