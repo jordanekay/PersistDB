@@ -218,13 +218,13 @@ public struct Expression<Model, Value>: Hashable {
 }
 
 extension Expression {
-    public var dictionary: [String: Any] {
+    public var dictionary: [String: any Sendable] {
         expression.sql.dictionary
     }
 }
 
 extension SQL.Expression {
-    fileprivate var dictionary: [String: Any] {
+    fileprivate var dictionary: [String: any Sendable] {
         switch self {
         case let .binary(`operator`, .column(column), .value(value)):
             return dictionary(column: column, operator: `operator`, value: value)
@@ -241,7 +241,7 @@ extension SQL.Expression {
         column: SQL.Column,
         operator: SQL.BinaryOperator,
         value: SQL.Value
-    ) -> [String: Any] {
+    ) -> [String: any Sendable] {
         [column.name: [`operator`.rawValue: value.text ?? value.description]]
     }
 }

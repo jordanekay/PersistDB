@@ -199,7 +199,7 @@ extension ValueSet {
         return true
     }
 
-    public var dictionary: [String: Any] {
+    public var dictionary: [String: any Sendable] {
         let pairs = values.compactMap { keyPath, value -> (String, Any)? in
             let property = Model.schema.properties.first { $0.key == keyPath }!
             let path: String? = switch property.value.type {
