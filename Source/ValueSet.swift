@@ -1,5 +1,6 @@
 import ReactiveSwift
 import Schemata
+import Foundation
 
 /// A value that can be used in an assigment in a value set.
 private enum AnyValue: Hashable {
@@ -212,7 +213,18 @@ extension ValueSet {
                 let path,
                 case let .expression(expression) = value,
                 case let .value(value) = expression.sql else { return nil }
-            return (path, value.text ?? value.description)
+
+			let textValue: String
+			if path == "date" { // TODO
+				let interval = TimeInterval(value.description)!
+				let date = Date(timeIntervalSinceReferenceDate: interval)
+				let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+				textValue = "\(components.year!)-\(components.month!)-\(components.day!)"
+			} else {
+				textValue = value.text ?? value.description
+			}
+
+            return (path, textValue)
         }
 
         return .init(uniqueKeysWithValues: pairs)
