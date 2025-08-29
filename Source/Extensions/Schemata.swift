@@ -67,7 +67,7 @@ extension Primitive {
 	var sql: SQL.Value {
 		switch self {
 		case let .date(date):
-			return .integer(date.timeIntervalSinceReferenceDate)
+			return .integer(Int(date.timeIntervalSinceReferenceDate))
 		case let .double(double):
 			return .real(double)
 		case let .int(int):
