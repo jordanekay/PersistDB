@@ -3,9 +3,9 @@ import Schemata
 extension AnyValue.Encoded {
 	var sql: SQL.DataType {
 		switch self {
-		case .double:
+		case .double, .date:
 			return .real
-		case .int, .date, .unit:
+		case .int, .unit:
 			return .integer
 		case .string:
 			return .text
@@ -67,7 +67,7 @@ extension Primitive {
 	var sql: SQL.Value {
 		switch self {
 		case let .date(date):
-			return .integer(Int(date.timeIntervalSinceReferenceDate))
+			return .real(date.timeIntervalSinceReferenceDate)
 		case let .double(double):
 			return .real(double)
 		case let .int(int):
