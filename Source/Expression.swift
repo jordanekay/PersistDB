@@ -226,12 +226,35 @@ public extension Expression {
 extension SQL.Expression {
 	fileprivate var dictionary: [String: any Sendable] {
 		switch self {
+		case let .binary(.and, lhs, rhs):
+			let lhs = lhs.dictionary
+			let rhs = rhs.dictionary
+			if
+				lhs.keys == rhs.keys,
+				case let key = lhs.keys.first!,
+				let lhs = lhs.values.first as? [String: any Sendable],
+				let rhs = rhs.values.first as? [String: any Sendable] {
+				return [key: lhs.merging(rhs) { $1 }]
+			} else {
+				return lhs.merging(rhs) { $1 }
+			}
 		case let .binary(`operator`, .column(column), .value(value)):
 			return dictionary(column: column, operator: `operator`, value: value)
 		case let .binary(`operator`, .join(outerColumn, _, .column(innerColumn)), .value(value)):
 			return [outerColumn.name: dictionary(column: innerColumn, operator: `operator`, value: value)]
-		case let .binary(`operator`, lhs, rhs):
-			return lhs.dictionary.merging([`operator`.rawValue: rhs.dictionary]) { $1 }
+		case let .inList(.column(column), set):
+			let values = set.compactMap { expression in
+				switch expression {
+				case let .value(value): value.text ?? value.description
+				default: nil
+				}
+			}
+
+			return [column.name: ["_in": values]]
+		case let .inList(.join(outerColumn, _, .column(innerColumn)), set):
+			return [outerColumn.name: SQL.Expression.inList(.column(innerColumn), set).dictionary]
+		case let .unary(`operator`, expression):
+			return [`operator`.rawValue: expression.dictionary]
 		default:
 			return [:]
 		}
