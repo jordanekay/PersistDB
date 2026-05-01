@@ -241,7 +241,23 @@ extension SQL.Expression {
 		case let .binary(`operator`, .column(column), .value(value)):
 			return dictionary(column: column, operator: `operator`, value: value)
 		case let .binary(`operator`, .join(outerColumn, _, .column(innerColumn)), .value(value)):
-			return [outerColumn.name: dictionary(column: innerColumn, operator: `operator`, value: value)]
+			return [
+				outerColumn.name: dictionary(
+					column: innerColumn,
+					operator: `operator`,
+					value: value
+				)
+			]
+		case let .binary(`operator`, .join(outerColumnA, _, .join(outerColumnB, _, .column(innerColumn))), .value(value)):
+			return [
+				outerColumnA.name: [
+					outerColumnB.name: dictionary(
+						column: innerColumn,
+						operator: `operator`,
+						value: value
+					)
+				]
+			]
 		case let .inList(.column(column), set):
 			let values = set.compactMap { expression in
 				switch expression {
