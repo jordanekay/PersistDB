@@ -1,5 +1,9 @@
 import Foundation
+#if canImport(SQLite3)
 import SQLite3
+#else
+import CSQLite
+#endif
 
 extension SQL {
     /// An untyped SQLite database that can execute SQL queries.

@@ -16,12 +16,22 @@ let package = Package(
         .package(url: "https://github.com/tonyarnold/Differ", from: "1.4.3")
     ],
     targets: [
+        .systemLibrary(
+            name: "CSQLite",
+            path: "CSQLite",
+            pkgConfig: "sqlite3",
+            providers: [
+                .apt(["libsqlite3-dev"]),
+                .brew(["sqlite3"])
+            ]
+        ),
         .target(
             name: "PersistDB",
             dependencies: [
                 "Differ",
                 "ReactiveSwift",
                 "Schemata",
+                .target(name: "CSQLite", condition: .when(platforms: [.linux])),
             ],
             path: "Source"
         )

@@ -147,6 +147,7 @@ public final class Store<Mode> {
         inApplicationGroup applicationGroup: String,
         for schemas: [AnySchema]
     ) -> SignalProducer<Store, OpenError> {
+#if canImport(Darwin)
         let url = FileManager
             .default
             .containerURL(forSecurityApplicationGroupIdentifier: applicationGroup)!
@@ -179,6 +180,12 @@ public final class Store<Mode> {
                     .deliverImmediately
                 )
             })
+#else
+        // Application groups and Darwin cross-process notifications are
+        // Apple-only. On non-Apple platforms, fall back to a regular on-disk
+        // store in the application-support directory.
+        return _open(libraryNamed: fileName, for: schemas)
+#endif
     }
 }
 
